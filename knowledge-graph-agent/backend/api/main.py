@@ -172,10 +172,15 @@ async def generate_graph(request: GenerateGraphRequest):
         if cached_data:
             logger.info(f"✅ Cache HIT! Returning cached graph for: {request.concept}")
             import json
+            cached_result = json.loads(cached_data)
+            # 确保返回的数据包含 graph_id，这样前端才能进行节点扩展
             return GraphResponse(
                 success=True,
                 message="从缓存返回",
-                data=json.loads(cached_data)
+                data={
+                    "graph_id": graph_id,
+                    **cached_result
+                }
             )
         else:
             logger.info(f"❌ Cache MISS! Generating new graph for: {request.concept}")
