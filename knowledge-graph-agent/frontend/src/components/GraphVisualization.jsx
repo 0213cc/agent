@@ -2,6 +2,40 @@ import React, { useEffect, useRef } from 'react';
 import ReactECharts from 'echarts-for-react';
 import './GraphVisualization.css';
 
+// 扩展的颜色调色板 - 30种不同的颜色
+const COLOR_PALETTE = [
+  '#e74c3c', // 红色
+  '#3498db', // 蓝色
+  '#2ecc71', // 绿色
+  '#f39c12', // 橙色
+  '#9b59b6', // 紫色
+  '#1abc9c', // 青绿色
+  '#e67e22', // 深橙色
+  '#34495e', // 深蓝灰
+  '#16a085', // 深青色
+  '#27ae60', // 深绿色
+  '#2980b9', // 深蓝色
+  '#8e44ad', // 深紫色
+  '#c0392b', // 深红色
+  '#d35400', // 南瓜橙
+  '#f1c40f', // 黄色
+  '#e91e63', // 粉红色
+  '#9c27b0', // 紫罗兰
+  '#673ab7', // 深紫罗兰
+  '#3f51b5', // 靛蓝
+  '#2196f3', // 亮蓝色
+  '#00bcd4', // 青色
+  '#009688', // 蓝绿色
+  '#4caf50', // 浅绿色
+  '#8bc34a', // 黄绿色
+  '#cddc39', // 柠檬绿
+  '#ff9800', // 琥珀色
+  '#ff5722', // 深橙红
+  '#795548', // 棕色
+  '#607d8b', // 蓝灰色
+  '#ec407a'  // 玫瑰红
+];
+
 const DOMAIN_COLORS = {
   'Mathematics': '#e74c3c',
   'Physics': '#3498db',
@@ -16,6 +50,19 @@ const DOMAIN_COLORS = {
   'Unknown': '#95a5a6'
 };
 
+// 动态分配颜色的函数
+const getDomainColor = (domain, allDomains) => {
+  // 如果已经在预定义颜色中，直接返回
+  if (DOMAIN_COLORS[domain]) {
+    return DOMAIN_COLORS[domain];
+  }
+  
+  // 否则从调色板中按顺序分配
+  const domainList = Array.from(allDomains).sort();
+  const index = domainList.indexOf(domain);
+  return COLOR_PALETTE[index % COLOR_PALETTE.length];
+};
+
 function GraphVisualization({ data, onNodeClick, loading }) {
   const chartRef = useRef(null);
 
@@ -24,13 +71,16 @@ function GraphVisualization({ data, onNodeClick, loading }) {
       return {};
     }
 
+    // 获取所有学科
+    const allDomains = new Set(data.nodes.map(n => n.domain));
+
     // 转换节点数据
     const nodes = data.nodes.map(node => ({
       id: node.id,
       name: node.label || node.id,
       symbolSize: node.type === 'center' ? 80 : 50,
       itemStyle: {
-        color: DOMAIN_COLORS[node.domain] || DOMAIN_COLORS['Unknown']
+        color: getDomainColor(node.domain, allDomains)
       },
       label: {
         show: true,
@@ -79,10 +129,10 @@ function GraphVisualization({ data, onNodeClick, loading }) {
     }));
 
     // 获取所有学科类别
-    const categories = [...new Set(data.nodes.map(n => n.domain))].map(domain => ({
+    const categories = Array.from(allDomains).sort().map(domain => ({
       name: domain,
       itemStyle: {
-        color: DOMAIN_COLORS[domain] || DOMAIN_COLORS['Unknown']
+        color: getDomainColor(domain, allDomains)
       }
     }));
 
@@ -194,4 +244,3 @@ function GraphVisualization({ data, onNodeClick, loading }) {
 }
 
 export default GraphVisualization;
-
