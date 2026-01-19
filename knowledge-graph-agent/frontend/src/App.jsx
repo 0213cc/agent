@@ -26,6 +26,8 @@ function App() {
       const response = await axios.post(`${API_BASE}/graph/generate`, {
         concept: concept.trim(),
         enable_validation: true
+      }, {
+        timeout: 300000 // 5分钟超时
       });
 
       if (response.data.success) {
@@ -53,11 +55,15 @@ function App() {
         graph_id: graphId,
         node_id: nodeId,
         enable_validation: true
+      }, {
+        timeout: 300000 // 5分钟超时
       });
 
       if (response.data.success) {
         // 重新获取完整图谱
-        const graphResponse = await axios.get(`${API_BASE}/graph/${graphId}`);
+        const graphResponse = await axios.get(`${API_BASE}/graph/${graphId}`, {
+          timeout: 30000 // 30秒超时
+        });
         if (graphResponse.data.success) {
           setGraphData(graphResponse.data.data.graph);
         }
@@ -116,7 +122,7 @@ function App() {
         <div className="loading-container">
           <div className="spinner"></div>
           <p className="loading-text">正在挖掘跨学科关联...</p>
-          <p className="loading-subtext">这可能需要30-60秒</p>
+          <p className="loading-subtext">这可能需要1-2分钟</p>
         </div>
       )}
 
@@ -181,4 +187,3 @@ function App() {
 }
 
 export default App;
-
