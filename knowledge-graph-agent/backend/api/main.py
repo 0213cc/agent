@@ -11,6 +11,7 @@ from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 import redis.asyncio as redis
+from datetime import datetime
 
 from agent_service.agent import AgentService
 from graph_service.neo4j_client import Neo4jClient
@@ -415,6 +416,117 @@ async def list_graphs():
         
     except Exception as e:
         logger.error(f"Error listing graphs: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/graph/export/markdown")
+async def export_markdown(request: dict):
+    """
+    导出图谱为 Markdown 报告
+    
+    - **graph_data**: 图谱数据
+    - **concept**: 核心概念
+    """
+    try:
+        graph_data = request.get("graph_data", {})
+        concept = request.get("concept", "未知概念")
+        
+        nodes = graph_data.get("nodes", [])
+        edges = graph_data.get("edges", [])
+        
+        # 统计信息
+        domains = set(n.get("domain", "未知") for n in nodes)
+        center_node = next((n for n in nodes if n.get("type") == "center"), None)
+        
+        # 生成 Markdown 报告
+        markdown = f"""# 跨学科知识图谱报告
+
+## 核心概念：{concept}
+
+---
+
+## 📊 图谱统计
+
+- **节点总数**：{len(nodes)}
+- **关系总数**：{len(edges)}
+- **涉及学科**：{len(domains)}
+- **生成时间**：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+---
+
+## 🎯 核心概念信息
+
+"""
+        
+        if center_node:
+            markdown += f"""**概念名称**：{center_node.get('label', center_node.get('id', ''))}
+
+**所属学科**：{center_node.get('domain', '未知')}
+
+**定义**：{center_node.get('definition', '暂无定义')}
+
+"""
+            if center_node.get('keywords'):
+                markdown += f"**关键词**：{', '.join(center_node.get('keywords', []))}\n\n"
+        
+        markdown += "---\n\n## 🌍 涉及学科领域\n\n"
+        
+        for domain in sorted(domains):
+            domain_nodes = [n for n in nodes if n.get("domain") == domain]
+            markdown += f"### {domain} ({len(domain_nodes)} 个概念)\n\n"
+            for node in domain_nodes:
+                if node.get("type") != "center":
+                    markdown += f"- **{node.get('label', node.get('id', ''))}**\n"
+            markdown += "\n"
+        
+        markdown += "---\n\n## 🔗 跨学科关联关系\n\n"
+        
+        # 按源节点分组
+        edges_by_source = {}
+        for edge in edges:
+            source = edge.get("source", "")
+            if source not in edges_by_source:
+                edges_by_source[source] = []
+            edges_by_source[source].append(edge)
+        
+        for source, source_edges in edges_by_source.items():
+            source_node = next((n for n in nodes if n.get("id") == source), None)
+            if source_node:
+                markdown += f"### {source_node.get('label', source)}\n\n"
+                for edge in source_edges:
+                    target_node = next((n for n in nodes if n.get("id") == edge.get("target")), None)
+                    if target_node:
+                        markdown += f"**→ {target_node.get('label', edge.get('target'))}** ({target_node.get('domain', '未知')})\n\n"
+                        markdown += f"- **关系类型**：{edge.get('relation_type', '未知')}\n"
+                        markdown += f"- **关系强度**：{edge.get('strength', 0)}/10\n"
+                        markdown += f"- **置信度**：{edge.get('confidence', 0):.2f}\n"
+                        markdown += f"- **说明**：{edge.get('explanation', '暂无说明')}\n\n"
+                markdown += "---\n\n"
+        
+        markdown += """## 📌 使用说明
+
+本报告由跨学科知识图谱智能体自动生成，展示了不同学科领域之间的概念关联。
+
+- 关系强度范围：1-10，数值越大表示关联越紧密
+- 置信度范围：0-1，表示关系的可靠程度
+- 所有关系均经过 AI 验证层校验
+
+---
+
+*生成工具：跨学科知识图谱智能体*  
+*技术栈：FastAPI + Neo4j + Redis + React*
+"""
+        
+        return {
+            "success": True,
+            "data": {
+                "markdown": markdown,
+                "filename": f"{concept}_知识图谱报告.md"
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error exporting markdown: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 

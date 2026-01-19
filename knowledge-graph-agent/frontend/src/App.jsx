@@ -11,6 +11,7 @@ function App() {
   const [graphData, setGraphData] = useState(null);
   const [error, setError] = useState(null);
   const [graphId, setGraphId] = useState(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
 
   const handleGenerate = async () => {
     if (!concept.trim()) {
@@ -84,6 +85,85 @@ function App() {
     }
   };
 
+  // 导出为 JSON
+  const handleExportJSON = () => {
+    if (!graphData) return;
+    
+    const dataStr = JSON.stringify({
+      concept: concept,
+      graph_id: graphId,
+      graph: graphData,
+      exported_at: new Date().toISOString()
+    }, null, 2);
+    
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${concept || '知识图谱'}_${new Date().getTime()}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+    setShowExportMenu(false);
+  };
+
+  // 导出为 PNG
+  const handleExportPNG = async () => {
+    if (!graphData) return;
+    
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const graphElement = document.querySelector('.graph-visualization');
+      if (graphElement) {
+        const canvas = await html2canvas(graphElement, {
+          backgroundColor: '#ffffff',
+          scale: 2
+        });
+        
+        canvas.toBlob(blob => {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = `${concept || '知识图谱'}_${new Date().getTime()}.png`;
+          link.click();
+          URL.revokeObjectURL(url);
+        });
+      }
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('导出 PNG 失败:', err);
+      setError('导出 PNG 失败，请安装 html2canvas 库');
+    }
+  };
+
+  // 导出为 Markdown
+  const handleExportMarkdown = async () => {
+    if (!graphData) return;
+    
+    try {
+      const response = await axios.post(`${API_BASE}/graph/export/markdown`, {
+        graph_data: graphData,
+        concept: concept
+      });
+      
+      if (response.data.success) {
+        const markdown = response.data.data.markdown;
+        const filename = response.data.data.filename;
+        
+        const blob = new Blob([markdown], { type: 'text/markdown' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
+      }
+      setShowExportMenu(false);
+    } catch (err) {
+      console.error('导出 Markdown 失败:', err);
+      setError('导出 Markdown 失败，请重试');
+    }
+  };
+
   return (
     <div className="app">
       <div className="header">
@@ -142,6 +222,30 @@ function App() {
               <span className="info-value">
                 {new Set(graphData.nodes?.map(n => n.domain)).size || 0}
               </span>
+            </div>
+            
+            {/* 导出按钮 */}
+            <div className="export-container">
+              <button 
+                className="export-btn"
+                onClick={() => setShowExportMenu(!showExportMenu)}
+              >
+                📥 导出图谱
+              </button>
+              
+              {showExportMenu && (
+                <div className="export-menu">
+                  <button onClick={handleExportJSON} className="export-menu-item">
+                    📄 导出为 JSON
+                  </button>
+                  <button onClick={handleExportPNG} className="export-menu-item">
+                    🖼️ 导出为 PNG
+                  </button>
+                  <button onClick={handleExportMarkdown} className="export-menu-item">
+                    📝 导出为 Markdown
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
