@@ -12,6 +12,8 @@ function App() {
   const [error, setError] = useState(null);
   const [graphId, setGraphId] = useState(null);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [summary, setSummary] = useState(null);
+  const [loadingSummary, setLoadingSummary] = useState(false);
 
   const handleGenerate = async () => {
     if (!concept.trim()) {
@@ -22,18 +24,22 @@ function App() {
     setLoading(true);
     setError(null);
     setGraphData(null);
+    setSummary(null);
 
     try {
       const response = await axios.post(`${API_BASE}/graph/generate`, {
         concept: concept.trim(),
         enable_validation: true
       }, {
-        timeout: 300000 // 5分钟超时
+        timeout: 300000
       });
 
       if (response.data.success) {
         setGraphData(response.data.data.graph);
         setGraphId(response.data.data.graph_id);
+        
+        // 自动生成摘要
+        generateSummary(response.data.data.graph, concept.trim());
       } else {
         setError('生成失败：' + (response.data.message || '未知错误'));
       }
@@ -57,16 +63,17 @@ function App() {
         node_id: nodeId,
         enable_validation: true
       }, {
-        timeout: 300000 // 5分钟超时
+        timeout: 300000
       });
 
       if (response.data.success) {
-        // 重新获取完整图谱
         const graphResponse = await axios.get(`${API_BASE}/graph/${graphId}`, {
-          timeout: 30000 // 30秒超时
+          timeout: 30000
         });
         if (graphResponse.data.success) {
           setGraphData(graphResponse.data.data.graph);
+          // 重新生成摘要
+          generateSummary(graphResponse.data.data.graph, concept);
         }
       } else {
         setError('扩展失败：' + (response.data.message || '未知错误'));
@@ -82,6 +89,25 @@ function App() {
   const handleKeyPress = (e) => {
     if (e.key === 'Enter') {
       handleGenerate();
+    }
+  };
+
+  // 生成摘要
+  const generateSummary = async (graphData, conceptName) => {
+    setLoadingSummary(true);
+    try {
+      const response = await axios.post(`${API_BASE}/graph/summary`, {
+        graph_data: graphData,
+        concept: conceptName
+      });
+      
+      if (response.data.success) {
+        setSummary(response.data.data);
+      }
+    } catch (err) {
+      console.error('生成摘要失败:', err);
+    } finally {
+      setLoadingSummary(false);
     }
   };
 
@@ -131,7 +157,7 @@ function App() {
       setShowExportMenu(false);
     } catch (err) {
       console.error('导出 PNG 失败:', err);
-      setError('导出 PNG 失败，请安装 html2canvas 库');
+      setError('导出 PNG 失败，请重试');
     }
   };
 
@@ -208,6 +234,35 @@ function App() {
 
       {graphData && (
         <div className="graph-container">
+          {/* 智能摘要卡片 */}
+          {summary && (
+            <div className="summary-card">
+              <div className="summary-header">
+                <span className="summary-icon">✨</span>
+                <h3>智能摘要</h3>
+              </div>
+              <p className="summary-text">{summary.summary}</p>
+              
+              {summary.key_concepts && summary.key_concepts.length > 0 && (
+                <div className="key-concepts">
+                  <span className="key-concepts-label">关键概念：</span>
+                  {summary.key_concepts.map((kc, idx) => (
+                    <span key={idx} className="key-concept-tag">
+                      {kc.concept} ({kc.connections} 个连接)
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+          
+          {loadingSummary && !summary && (
+            <div className="summary-loading">
+              <div className="summary-spinner"></div>
+              <span>正在生成智能摘要...</span>
+            </div>
+          )}
+          
           <div className="graph-info">
             <div className="info-item">
               <span className="info-label">节点数：</span>
@@ -224,7 +279,6 @@ function App() {
               </span>
             </div>
             
-            {/* 导出按钮 */}
             <div className="export-container">
               <button 
                 className="export-btn"

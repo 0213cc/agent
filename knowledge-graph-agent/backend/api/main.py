@@ -530,6 +530,99 @@ async def export_markdown(request: dict):
         raise HTTPException(status_code=500, detail=str(e))
 
 
+
+
+@app.post("/api/graph/summary")
+async def generate_summary(request: dict):
+    """
+    生成图谱智能摘要
+    
+    - **graph_data**: 图谱数据
+    - **concept**: 核心概念
+    """
+    try:
+        graph_data = request.get("graph_data", {})
+        concept = request.get("concept", "未知概念")
+        
+        nodes = graph_data.get("nodes", [])
+        edges = graph_data.get("edges", [])
+        
+        # 统计信息
+        domains = list(set(n.get("domain", "未知") for n in nodes))
+        center_node = next((n for n in nodes if n.get("type") == "center"), None)
+        
+        # 构建提示词
+        prompt = f"""你是一个跨学科知识专家。请为以下知识图谱生成一个简洁而富有洞察力的摘要。
+
+核心概念：{concept}
+所属学科：{center_node.get('domain', '未知') if center_node else '未知'}
+定义：{center_node.get('definition', '暂无') if center_node else '暂无'}
+
+图谱统计：
+- 节点总数：{len(nodes)}
+- 关系总数：{len(edges)}
+- 涉及学科：{', '.join(domains)}
+
+关联的概念：
+{chr(10).join([f"- {n.get('label', n.get('id', ''))} ({n.get('domain', '未知')})" for n in nodes if n.get('type') != 'center'][:10])}
+
+请生成一个包含以下内容的摘要（200字以内）：
+1. 核心概念的简要说明
+2. 主要的跨学科关联特点
+3. 最有价值的洞察或发现
+
+请用自然、流畅的语言，避免列表式表达。直接输出摘要文本，不要其他内容。
+"""
+        
+        # 调用 LLM 生成摘要
+        from agent_service.llm_client import LLMClient
+        llm_client = LLMClient()
+        
+        summary = await llm_client.call_llm(
+            prompt=prompt,
+            system_prompt="你是一个专业的知识图谱分析专家，擅长提炼跨学科知识的核心洞察。",
+            temperature=0.7
+        )
+        
+        # 提取关键节点（度最高的节点）
+        node_degrees = {}
+        for edge in edges:
+            source = edge.get("source", "")
+            target = edge.get("target", "")
+            node_degrees[source] = node_degrees.get(source, 0) + 1
+            node_degrees[target] = node_degrees.get(target, 0) + 1
+        
+        # 排序获取前3个关键节点
+        sorted_nodes = sorted(node_degrees.items(), key=lambda x: x[1], reverse=True)[:3]
+        key_concepts = []
+        for node_id, degree in sorted_nodes:
+            node = next((n for n in nodes if n.get("id") == node_id), None)
+            if node:
+                key_concepts.append({
+                    "concept": node.get("label", node_id),
+                    "domain": node.get("domain", "未知"),
+                    "connections": degree
+                })
+        
+        return {
+            "success": True,
+            "data": {
+                "summary": summary.strip(),
+                "key_concepts": key_concepts,
+                "stats": {
+                    "total_nodes": len(nodes),
+                    "total_edges": len(edges),
+                    "domains_count": len(domains),
+                    "domains": domains
+                }
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error generating summary: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
