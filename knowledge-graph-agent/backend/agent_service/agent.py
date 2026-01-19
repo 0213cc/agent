@@ -27,7 +27,8 @@ class AgentService:
     async def generate_knowledge_graph(
         self,
         concept: str,
-        enable_validation: bool = True
+        enable_validation: bool = True,
+        fast_mode: bool = True
     ) -> Dict[str, Any]:
         """
         生成知识图谱
@@ -35,11 +36,12 @@ class AgentService:
         Args:
             concept: 核心概念
             enable_validation: 是否启用校验层
+            fast_mode: 快速模式（只做直接验证，跳过反向验证）
             
         Returns:
             知识图谱数据
         """
-        logger.info(f"Generating knowledge graph for concept: {concept}")
+        logger.info(f"Generating knowledge graph for concept: {concept} (fast_mode={fast_mode})")
         
         try:
             # 阶段1: 概念识别
@@ -52,7 +54,10 @@ class AgentService:
             
             # 阶段3: 校验层验证（可选）
             if enable_validation:
-                relations = await self.validator.validate_relations_batch(relations)
+                relations = await self.validator.validate_relations_batch(
+                    relations, 
+                    fast_mode=fast_mode
+                )
                 logger.info(f"After validation: {len(relations)} valid relations")
             
             # 阶段4: 构建图谱数据结构
@@ -121,7 +126,8 @@ class AgentService:
         self,
         concept: str,
         domain: str,
-        enable_validation: bool = True
+        enable_validation: bool = True,
+        fast_mode: bool = True
     ) -> Dict[str, Any]:
         """
         扩展单个概念
@@ -130,11 +136,12 @@ class AgentService:
             concept: 要扩展的概念
             domain: 概念所属学科
             enable_validation: 是否启用校验
+            fast_mode: 快速模式
             
         Returns:
             扩展结果
         """
-        logger.info(f"Expanding concept: {concept} ({domain})")
+        logger.info(f"Expanding concept: {concept} ({domain}) (fast_mode={fast_mode})")
         
         try:
             prompt = CONCEPT_EXPANSION_PROMPT.format(
@@ -165,7 +172,10 @@ class AgentService:
             
             # 校验
             if enable_validation:
-                relations = await self.validator.validate_relations_batch(relations)
+                relations = await self.validator.validate_relations_batch(
+                    relations,
+                    fast_mode=fast_mode
+                )
             
             return {
                 "success": True,
@@ -245,4 +255,3 @@ class AgentService:
             "nodes": nodes,
             "edges": edges
         }
-

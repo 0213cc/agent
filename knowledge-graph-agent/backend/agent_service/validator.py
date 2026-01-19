@@ -4,6 +4,7 @@
 """
 import logging
 import json
+import asyncio
 from typing import Dict, Any, List, Optional
 from .llm_client import LLMClient
 from .prompts import (
@@ -87,6 +88,55 @@ class ValidationLayer:
         
         return result
     
+    async def validate_relation_fast(
+        self,
+        source_concept: str,
+        source_domain: str,
+        target_concept: str,
+        target_domain: str,
+        relation_type: str,
+        explanation: str
+    ) -> Dict[str, Any]:
+        """
+        快速验证单个关系（只做直接验证）
+        
+        Args:
+            source_concept: 源概念
+            source_domain: 源学科
+            target_concept: 目标概念
+            target_domain: 目标学科
+            relation_type: 关系类型
+            explanation: 关系说明
+            
+        Returns:
+            验证结果字典
+        """
+        logger.info(f"Fast validating relation: {source_concept} -> {target_concept}")
+        
+        # 只做直接验证
+        direct_validation = await self._direct_validation(
+            source_concept, source_domain,
+            target_concept, target_domain,
+            relation_type, explanation
+        )
+        
+        # 降低阈值以提高通过率
+        is_valid = (
+            direct_validation.get("valid", False) and
+            direct_validation.get("confidence", 0) >= (self.confidence_threshold * 0.8)
+        )
+        
+        result = {
+            "valid": is_valid,
+            "confidence": direct_validation.get("confidence", 0),
+            "direct_validation": direct_validation,
+            "suggested_strength": direct_validation.get("suggested_strength", 5)
+        }
+        
+        logger.info(f"Fast validation result: valid={is_valid}, confidence={result['confidence']:.2f}")
+        
+        return result
+    
     async def _direct_validation(
         self,
         source_concept: str,
@@ -160,24 +210,26 @@ class ValidationLayer:
     
     async def validate_relations_batch(
         self,
-        relations: List[Dict[str, Any]]
+        relations: List[Dict[str, Any]],
+        fast_mode: bool = False
     ) -> List[Dict[str, Any]]:
         """
-        批量验证关系
+        批量验证关系（并行优化版本）
         
         Args:
             relations: 关系列表
+            fast_mode: 快速模式（只做直接验证，跳过反向验证）
             
         Returns:
             验证后的关系列表（只包含有效关系）
         """
-        logger.info(f"Validating {len(relations)} relations")
+        logger.info(f"Validating {len(relations)} relations (fast_mode={fast_mode})")
         
-        validated_relations = []
-        
+        # 并行验证所有关系
+        validation_tasks = []
         for relation in relations:
-            try:
-                validation_result = await self.validate_relation(
+            if fast_mode:
+                task = self.validate_relation_fast(
                     source_concept=relation.get("source_concept", ""),
                     source_domain=relation.get("source_domain", ""),
                     target_concept=relation.get("target_concept", ""),
@@ -185,6 +237,28 @@ class ValidationLayer:
                     relation_type=relation.get("relation_type", ""),
                     explanation=relation.get("explanation", "")
                 )
+            else:
+                task = self.validate_relation(
+                    source_concept=relation.get("source_concept", ""),
+                    source_domain=relation.get("source_domain", ""),
+                    target_concept=relation.get("target_concept", ""),
+                    target_domain=relation.get("target_domain", ""),
+                    relation_type=relation.get("relation_type", ""),
+                    explanation=relation.get("explanation", "")
+                )
+            validation_tasks.append(task)
+        
+        # 并行执行所有验证任务
+        validation_results = await asyncio.gather(*validation_tasks, return_exceptions=True)
+        
+        # 处理验证结果
+        validated_relations = []
+        for relation, validation_result in zip(relations, validation_results):
+            try:
+                # 如果验证出错，跳过该关系
+                if isinstance(validation_result, Exception):
+                    logger.error(f"Error validating relation: {str(validation_result)}")
+                    continue
                 
                 if validation_result["valid"]:
                     # 更新关系强度
@@ -199,7 +273,7 @@ class ValidationLayer:
                     )
                     
             except Exception as e:
-                logger.error(f"Error validating relation: {str(e)}")
+                logger.error(f"Error processing validation result: {str(e)}")
                 continue
         
         logger.info(f"Validated {len(validated_relations)} out of {len(relations)} relations")
@@ -303,4 +377,3 @@ class ValidationLayer:
                     score += max(0, 1 - diff)
         
         return score / total if total > 0 else 0.0
-

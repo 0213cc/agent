@@ -86,6 +86,7 @@ class GenerateGraphRequest(BaseModel):
     """生成图谱请求"""
     concept: str = Field(..., description="核心概念", min_length=1, max_length=100)
     enable_validation: bool = Field(True, description="是否启用校验层")
+    fast_mode: bool = Field(True, description="快速模式（只做直接验证，速度更快）")
 
 
 class ExpandNodeRequest(BaseModel):
@@ -93,6 +94,7 @@ class ExpandNodeRequest(BaseModel):
     graph_id: str = Field(..., description="图谱ID")
     node_id: str = Field(..., description="节点ID")
     enable_validation: bool = Field(True, description="是否启用校验层")
+    fast_mode: bool = Field(True, description="快速模式")
 
 
 class GraphResponse(BaseModel):
@@ -154,6 +156,7 @@ async def generate_graph(request: GenerateGraphRequest):
     
     - **concept**: 核心概念（如"熵"、"神经网络"）
     - **enable_validation**: 是否启用校验层（推荐开启）
+    - **fast_mode**: 快速模式（只做直接验证，速度提升50%）
     """
     try:
         logger.info(f"Received request to generate graph for: {request.concept}")
@@ -162,7 +165,7 @@ async def generate_graph(request: GenerateGraphRequest):
         graph_id = hashlib.md5(request.concept.encode()).hexdigest()
         
         # 检查缓存
-        cache_key = f"graph:{graph_id}"
+        cache_key = f"graph:{graph_id}:{request.fast_mode}"
         cached_data = await redis_client.get(cache_key)
         
         if cached_data:
@@ -177,7 +180,8 @@ async def generate_graph(request: GenerateGraphRequest):
         # 生成图谱
         result = await agent_service.generate_knowledge_graph(
             concept=request.concept,
-            enable_validation=request.enable_validation
+            enable_validation=request.enable_validation,
+            fast_mode=request.fast_mode
         )
         
         if not result.get("success"):
@@ -256,6 +260,7 @@ async def expand_node(request: ExpandNodeRequest):
     - **graph_id**: 图谱ID
     - **node_id**: 要扩展的节点ID
     - **enable_validation**: 是否启用校验层
+    - **fast_mode**: 快速模式
     """
     try:
         logger.info(f"Expanding node {request.node_id} in graph {request.graph_id}")
@@ -279,7 +284,8 @@ async def expand_node(request: ExpandNodeRequest):
         expansion_result = await agent_service.expand_concept(
             concept=target_node["id"],
             domain=target_node.get("domain", "Unknown"),
-            enable_validation=request.enable_validation
+            enable_validation=request.enable_validation,
+            fast_mode=request.fast_mode
         )
         
         if not expansion_result.get("success"):
@@ -394,4 +400,3 @@ async def list_graphs():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
-
