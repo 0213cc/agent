@@ -13,7 +13,7 @@ CONCEPT_IDENTIFICATION_PROMPT = """你是一个跨学科知识专家。
 请按以下JSON格式输出：
 {{
     "concept": "概念名称",
-    "primary_domain": "主要学科领域",
+    "primary_domain": "主要学科领域（必须使用中文，如：数学、物理学、计算机科学、生物学、社会学等）",
     "definition": "简短定义（50字以内）",
     "keywords": ["关键词1", "关键词2", "关键词3"]
 }}
@@ -22,6 +22,7 @@ CONCEPT_IDENTIFICATION_PROMPT = """你是一个跨学科知识专家。
 1. 准确识别概念的主要学科归属
 2. 定义要简洁准确
 3. 提取3-5个关键词
+4. **重要：primary_domain必须使用中文学科名称，不要使用英文**
 
 只输出JSON，不要其他内容。
 """
@@ -34,11 +35,11 @@ CROSS_DOMAIN_MINING_PROMPT = """你是一个跨学科知识专家，擅长发现
 概念定义：{definition}
 
 任务：在以下5个学科领域中，寻找与该概念相关的概念：
-1. 数学 (Mathematics)
-2. 物理学 (Physics)
-3. 计算机科学 (Computer Science)
-4. 生物学 (Biology)
-5. 社会学 (Sociology)
+1. 数学
+2. 物理学
+3. 计算机科学
+4. 生物学
+5. 社会学
 
 对于每个学科，找出1-3个相关概念，并说明关系。
 
@@ -48,7 +49,7 @@ CROSS_DOMAIN_MINING_PROMPT = """你是一个跨学科知识专家，擅长发现
         {{
             "source_concept": "原概念",
             "target_concept": "相关概念名称",
-            "target_domain": "目标学科",
+            "target_domain": "目标学科（必须使用中文，如：数学、物理学、计算机科学、生物学、社会学）",
             "relation_type": "关系类型（如：类比、应用、理论基础、启发、数学建模等）",
             "relation_strength": 8,
             "explanation": "关系说明（100字以内）"
@@ -62,6 +63,7 @@ CROSS_DOMAIN_MINING_PROMPT = """你是一个跨学科知识专家，擅长发现
 3. 每个学科至少找1个相关概念
 4. 关系类型要准确，explanation要有说服力
 5. 总共输出5-15个关系
+6. **重要：target_domain必须使用中文学科名称，不要使用英文**
 
 只输出JSON，不要其他内容。
 """
@@ -111,7 +113,7 @@ CONCEPT_EXPANSION_PROMPT = """你是一个跨学科知识专家。
     "expansions": [
         {{
             "concept": "相关概念名称",
-            "domain": "学科",
+            "domain": "学科（必须使用中文，如：数学、物理学、计算机科学、生物学、社会学等）",
             "relation_type": "关系类型",
             "relation_strength": 7,
             "explanation": "关系说明"
@@ -123,6 +125,7 @@ CONCEPT_EXPANSION_PROMPT = """你是一个跨学科知识专家。
 1. 找出3-5个直接相关的概念
 2. 关系要明确且有说服力
 3. 优先选择重要的、有代表性的概念
+4. **重要：domain必须使用中文学科名称，不要使用英文**
 
 只输出JSON，不要其他内容。
 """
@@ -150,11 +153,22 @@ REVERSE_VALIDATION_PROMPT = """你是一个知识验证专家。
 # 系统提示词
 SYSTEM_PROMPT = """你是一个专业的跨学科知识专家，具有以下特点：
 
-1. 知识广博：精通数学、物理、计算机科学、生物学、社会学等多个学科
+1. 知识广博：精通数学、物理学、计算机科学、生物学、社会学等多个学科
 2. 思维严谨：只陈述确定性强的知识，不进行臆测
 3. 善于类比：能够发现不同学科间的深层联系
 4. 输出规范：严格按照JSON格式输出，不添加额外内容
+5. 语言规范：所有学科名称必须使用中文，不要使用英文
 
 你的任务是帮助用户构建跨学科知识图谱，发现概念间的"远亲"关系。
-"""
 
+**重要提醒：在所有输出中，学科领域必须使用中文名称，例如：**
+- 数学（不要用 Mathematics）
+- 物理学（不要用 Physics）
+- 计算机科学（不要用 Computer Science）
+- 生物学（不要用 Biology）
+- 社会学（不要用 Sociology）
+- 化学（不要用 Chemistry）
+- 经济学（不要用 Economics）
+- 心理学（不要用 Psychology）
+等等。
+"""

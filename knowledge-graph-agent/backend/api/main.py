@@ -166,16 +166,19 @@ async def generate_graph(request: GenerateGraphRequest):
         
         # 检查缓存
         cache_key = f"graph:{graph_id}:{request.fast_mode}"
+        logger.info(f"🔍 Checking cache with key: {cache_key}")
         cached_data = await redis_client.get(cache_key)
         
         if cached_data:
-            logger.info(f"Returning cached graph for: {request.concept}")
+            logger.info(f"✅ Cache HIT! Returning cached graph for: {request.concept}")
             import json
             return GraphResponse(
                 success=True,
                 message="从缓存返回",
                 data=json.loads(cached_data)
             )
+        else:
+            logger.info(f"❌ Cache MISS! Generating new graph for: {request.concept}")
         
         # 生成图谱
         result = await agent_service.generate_knowledge_graph(
@@ -203,6 +206,7 @@ async def generate_graph(request: GenerateGraphRequest):
             cache_ttl,
             json.dumps(result)
         )
+        logger.info(f"💾 Cached graph with key: {cache_key}, TTL: {cache_ttl}s")
         
         return GraphResponse(
             success=True,
@@ -330,9 +334,15 @@ async def expand_node(request: ExpandNodeRequest):
             new_edges=new_edges
         )
         
-        # 清除缓存
-        cache_key = f"graph:{request.graph_id}"
-        await redis_client.delete(cache_key)
+        # 清除所有相关缓存（包括不同 fast_mode 的缓存）
+        cache_keys = [
+            f"graph:{request.graph_id}:True",
+            f"graph:{request.graph_id}:False",
+            f"graph:{request.graph_id}"
+        ]
+        for cache_key in cache_keys:
+            deleted = await redis_client.delete(cache_key)
+            logger.info(f"🗑️  Deleted cache key: {cache_key}, result: {deleted}")
         
         return GraphResponse(
             success=True,
@@ -363,9 +373,15 @@ async def delete_graph(graph_id: str):
         
         await neo4j_client.delete_graph(graph_id)
         
-        # 清除缓存
-        cache_key = f"graph:{graph_id}"
-        await redis_client.delete(cache_key)
+        # 清除所有相关缓存（包括不同 fast_mode 的缓存）
+        cache_keys = [
+            f"graph:{graph_id}:True",
+            f"graph:{graph_id}:False",
+            f"graph:{graph_id}"
+        ]
+        for cache_key in cache_keys:
+            deleted = await redis_client.delete(cache_key)
+            logger.info(f"🗑️  Deleted cache key: {cache_key}, result: {deleted}")
         
         return GraphResponse(
             success=True,
