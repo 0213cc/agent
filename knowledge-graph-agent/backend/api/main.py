@@ -694,3 +694,84 @@ async def get_wikipedia_summary(concept: str):
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+@app.get("/api/literature/{concept}")
+async def get_literature_recommendations(concept: str):
+    """
+    获取文献推荐（学术论文）
+    
+    - **concept**: 概念名称
+    """
+    try:
+        import aiohttp
+        import urllib.parse
+        
+        # URL 编码概念名称
+        encoded_concept = urllib.parse.quote(concept)
+        
+        # Semantic Scholar API（免费，无需Key）
+        api_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={encoded_concept}&limit=5&fields=title,authors,year,abstract,url,citationCount,venue"
+        
+        logger.info(f"Fetching literature for: {concept}")
+        
+        # 添加请求头
+        headers = {
+            'User-Agent': 'KnowledgeGraphAgent/1.0 (Educational Project)',
+            'Accept': 'application/json'
+        }
+        
+        papers = []
+        
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(api_url, headers=headers, timeout=aiohttp.ClientTimeout(total=30)) as response:
+                    logger.info(f"Semantic Scholar API response status: {response.status}")
+                    
+                    if response.status == 429:
+                        return {
+                            "success": False,
+                            "message": "学术API请求过于频繁，请稍后再试（建议等待1-2分钟）"
+                        }
+                    elif response.status == 200:
+                        data = await response.json()
+                        
+                        # 提取论文信息
+                        for paper in data.get("data", [])[:5]:
+                            authors = [author.get("name", "") for author in paper.get("authors", [])]
+                            
+                            papers.append({
+                                "title": paper.get("title", ""),
+                                "authors": authors,
+                                "year": paper.get("year"),
+                                "abstract": paper.get("abstract", "")[:300] + "..." if paper.get("abstract") else "暂无摘要",
+                                "url": paper.get("url", ""),
+                                "citations": paper.get("citationCount", 0),
+                                "venue": paper.get("venue", "")
+                            })
+                        
+                        return {
+                            "success": True,
+                            "data": {
+                                "papers": papers,
+                                "count": len(papers)
+                            }
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "message": f"API 返回错误: {response.status}"
+                        }
+            except aiohttp.ClientError as ce:
+                logger.error(f"aiohttp ClientError: {str(ce)}")
+                return {
+                    "success": False,
+                    "message": f"网络请求失败: {str(ce)}"
+                }
+                    
+    except Exception as e:
+        logger.error(f"Error fetching literature: {str(e)}")
+        return {
+            "success": False,
+            "message": str(e) if str(e) else "未知错误"
+        }

@@ -17,6 +17,8 @@ function App() {
   const [selectedNode, setSelectedNode] = useState(null);
   const [wikiData, setWikiData] = useState(null);
   const [loadingWiki, setLoadingWiki] = useState(false);
+  const [literatureData, setLiteratureData] = useState(null);
+  const [loadingLiterature, setLoadingLiterature] = useState(false);
 
 
   const handleGenerate = async () => {
@@ -148,12 +150,39 @@ function App() {
     }
   };
 
+
+  // 获取文献推荐
+  const fetchLiterature = async (nodeName) => {
+    setLoadingLiterature(true);
+    setLiteratureData(null);
+    
+    try {
+      const response = await axios.get(`${API_BASE}/literature/${encodeURIComponent(nodeName)}`);
+      
+      if (response.data.success) {
+        setLiteratureData(response.data.data);
+      } else {
+        setLiteratureData({
+          error: response.data.message || '未找到相关文献'
+        });
+      }
+    } catch (err) {
+      console.error('获取文献推荐失败:', err);
+      setLiteratureData({
+        error: '获取文献推荐失败'
+      });
+    } finally {
+      setLoadingLiterature(false);
+    }
+  };
+
   // 处理节点点击（显示维基百科）
   const handleNodeInfo = (nodeId) => {
     const node = graphData?.nodes?.find(n => n.id === nodeId);
     if (node) {
       setSelectedNode(node);
       fetchWikipedia(node.label || node.id);
+      fetchLiterature(node.label || node.id);
     }
   };
 
@@ -161,6 +190,7 @@ function App() {
   const closeNodePanel = () => {
     setSelectedNode(null);
     setWikiData(null);
+    setLiteratureData(null);
   };
 
 
@@ -409,6 +439,62 @@ function App() {
                         )}
                       </>
                     )}
+
+                
+                {/* 文献推荐部分 */}
+                <div className="literature-section">
+                  <h4 className="section-title">📚 相关文献推荐</h4>
+                  
+                  {loadingLiterature && (
+                    <div className="literature-loading">
+                      <div className="literature-spinner"></div>
+                      <span>正在搜索相关文献...</span>
+                    </div>
+                  )}
+                  
+                  {literatureData && !loadingLiterature && (
+                    <div className="literature-content">
+                      {literatureData.error ? (
+                        <p className="literature-error">{literatureData.error}</p>
+                      ) : (
+                        <>
+                          {literatureData.papers && literatureData.papers.length > 0 ? (
+                            <div className="papers-list">
+                              {literatureData.papers.map((paper, idx) => (
+                                <div key={idx} className="paper-item">
+                                  <h5 className="paper-title">{paper.title}</h5>
+                                  <div className="paper-meta">
+                                    <span className="paper-authors">
+                                      {paper.authors.slice(0, 3).join(', ')}
+                                      {paper.authors.length > 3 && ' et al.'}
+                                    </span>
+                                    {paper.year && <span className="paper-year">({paper.year})</span>}
+                                  </div>
+                                  {paper.venue && (
+                                    <div className="paper-venue">{paper.venue}</div>
+                                  )}
+                                  <p className="paper-abstract">{paper.abstract}</p>
+                                  <div className="paper-footer">
+                                    <span className="paper-citations">
+                                      📊 引用次数: {paper.citations}
+                                    </span>
+                                    {paper.url && (
+                                      <a href={paper.url} target="_blank" rel="noopener noreferrer" className="paper-link">
+                                        查看论文 →
+                                      </a>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="no-papers">暂无相关文献</p>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
                   </div>
                 )}
               </div>

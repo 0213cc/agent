@@ -561,3 +561,147 @@
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
+
+/* 文献推荐样式 */
+.literature-section {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 15px;
+}
+
+.literature-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  color: #666;
+}
+
+.literature-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid #f3f3f3;
+  border-top: 2px solid #3498db;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.literature-content {
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.literature-error {
+  color: #e74c3c;
+  padding: 15px;
+  background: #fee;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.papers-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.paper-item {
+  padding: 15px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border-left: 4px solid #3498db;
+  transition: all 0.3s ease;
+}
+
+.paper-item:hover {
+  background: #e8f4f8;
+  transform: translateX(5px);
+  box-shadow: 0 2px 8px rgba(52, 152, 219, 0.2);
+}
+
+.paper-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #2c3e50;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.paper-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #7f8c8d;
+}
+
+.paper-authors {
+  font-style: italic;
+}
+
+.paper-year {
+  font-weight: 500;
+}
+
+.paper-venue {
+  font-size: 12px;
+  color: #95a5a6;
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.paper-abstract {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.paper-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+}
+
+.paper-citations {
+  font-size: 12px;
+  color: #7f8c8d;
+  font-weight: 500;
+}
+
+.paper-link {
+  font-size: 13px;
+  color: #3498db;
+  text-decoration: none;
+  font-weight: 500;
+  transition: color 0.3s ease;
+}
+
+.paper-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.no-papers {
+  text-align: center;
+  color: #95a5a6;
+  padding: 30px;
+  font-style: italic;
+}
+
+/* 调整节点详情面板的宽度以容纳更多内容 */
+.node-detail-content {
+  width: 600px;
+  max-width: 90vw;
+}
