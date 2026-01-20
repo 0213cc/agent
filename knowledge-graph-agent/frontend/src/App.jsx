@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import axios from 'axios';
 import GraphVisualization from './components/GraphVisualization';
 import './App.css';
@@ -19,6 +19,7 @@ function App() {
   const [loadingWiki, setLoadingWiki] = useState(false);
   const [literatureData, setLiteratureData] = useState(null);
   const [loadingLiterature, setLoadingLiterature] = useState(false);
+  const lastNodeInfoTimeRef = useRef(0);
 
 
   const handleGenerate = async () => {
@@ -176,10 +177,19 @@ function App() {
     }
   };
 
-  // 处理节点点击（显示维基百科）
+  // 处理节点点击（显示维基百科和文献）
   const handleNodeInfo = (nodeId) => {
+    // 防抖：500ms 内只处理一次
+    const now = Date.now();
+    if (now - lastNodeInfoTimeRef.current < 500) {
+      console.log('防抖：忽略重复的节点信息请求');
+      return;
+    }
+    lastNodeInfoTimeRef.current = now;
+
     const node = graphData?.nodes?.find(n => n.id === nodeId);
     if (node) {
+      console.log('处理节点信息:', node.label || node.id);
       setSelectedNode(node);
       fetchWikipedia(node.label || node.id);
       fetchLiterature(node.label || node.id);

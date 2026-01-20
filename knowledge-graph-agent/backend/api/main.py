@@ -713,6 +713,16 @@ async def get_literature_recommendations(concept: str):
         # Semantic Scholar API（免费，无需Key）
         api_url = f"https://api.semanticscholar.org/graph/v1/paper/search?query={encoded_concept}&limit=5&fields=title,authors,year,abstract,url,citationCount,venue"
         
+        # 检查缓存
+        import json
+        cache_key = f"literature:{concept}"
+        cached_data = await redis_client.get(cache_key)
+        
+        if cached_data:
+            logger.info(f"✅ Literature Cache HIT for: {concept}")
+            return json.loads(cached_data)
+        
+        logger.info(f"❌ Literature Cache MISS for: {concept}")
         logger.info(f"Fetching literature for: {concept}")
         
         # 添加请求头
@@ -750,13 +760,24 @@ async def get_literature_recommendations(concept: str):
                                 "venue": paper.get("venue", "")
                             })
                         
-                        return {
+                        result = {
                             "success": True,
                             "data": {
                                 "papers": papers,
                                 "count": len(papers)
                             }
                         }
+                        
+                        # 缓存结果（24小时）
+                        import json
+                        await redis_client.setex(
+                            cache_key,
+                            86400,  # 24小时
+                            json.dumps(result)
+                        )
+                        logger.info(f"💾 Cached literature for: {concept}")
+                        
+                        return result
                     else:
                         return {
                             "success": False,

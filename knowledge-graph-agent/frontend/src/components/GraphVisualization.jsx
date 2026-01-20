@@ -185,7 +185,8 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
             repulsion: 300,
             gravity: 0.1,
             edgeLength: [100, 200],
-            layoutAnimation: true
+            layoutAnimation: true,
+            friction: 0.6
           },
           emphasis: {
             focus: 'adjacency',
@@ -214,17 +215,40 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
     }
   }, [loading, onNodeClick]);
 
-  const handleChartRightClick = (params) => {
+  const handleChartRightClick = useCallback((params) => {
     // 阻止浏览器默认右键菜单
-    params.event?.event?.preventDefault();
-
-    if (params.dataType === 'node' && !loading) {
-      const nodeId = params.data.id;
-      if (onNodeRightClick) {
-        onNodeRightClick(nodeId);
-      }
+    if (params.event?.event) {
+      params.event.event.preventDefault();
+      params.event.event.stopPropagation();
     }
-  };
+
+    // 防抖：300ms 内只处理一次右键点击
+    const now = Date.now();
+    if (now - lastClickTimeRef.current < 300) {
+      console.log('防抖：忽略重复的右键点击');
+      return false;
+    }
+    lastClickTimeRef.current = now;
+
+    // 清除之前的定时器
+    if (clickTimeoutRef.current) {
+      clearTimeout(clickTimeoutRef.current);
+    }
+
+    // 延迟执行，避免重复触发
+    clickTimeoutRef.current = setTimeout(() => {
+      if (params.dataType === 'node' && !loading) {
+        const nodeId = params.data.id;
+        console.log('执行右键点击处理:', nodeId);
+        if (onNodeRightClick) {
+          onNodeRightClick(nodeId);
+        }
+      }
+    }, 50);
+    
+    // 阻止事件冒泡
+    return false;
+  }, [loading, onNodeRightClick]);
 
   const onEvents = {
     click: handleChartClick
@@ -249,7 +273,7 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
           option={getOption()}
           style={{ height: '600px', width: '100%' }}
           onEvents={onEvents}
-          notMerge={true}
+          notMerge={false}
           lazyUpdate={true}
         />
       ) : (
