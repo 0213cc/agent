@@ -169,6 +169,7 @@ async def generate_graph(request: GenerateGraphRequest):
         cache_key = f"graph:{graph_id}:{request.fast_mode}"
         logger.info(f"🔍 Checking cache with key: {cache_key}")
         cached_data = await redis_client.get(cache_key)
+        logger.info(f"🔍 Cache data type: {type(cached_data)}, is None: {cached_data is None}, bool: {bool(cached_data)}")
         
         if cached_data:
             logger.info(f"✅ Cache HIT! Returning cached graph for: {request.concept}")
@@ -621,6 +622,73 @@ async def generate_summary(request: dict):
     except Exception as e:
         logger.error(f"Error generating summary: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/api/wikipedia/{concept}")
+async def get_wikipedia_summary(concept: str):
+    """
+    获取维基百科摘要
+    
+    - **concept**: 概念名称
+    """
+    try:
+        import aiohttp
+        import urllib.parse
+        import traceback
+        
+        # URL 编码概念名称
+        encoded_concept = urllib.parse.quote(concept)
+        
+        # 维基百科 API 端点
+        wiki_url = f"https://zh.wikipedia.org/api/rest_v1/page/summary/{encoded_concept}"
+        
+        logger.info(f"Fetching Wikipedia summary for: {concept}")
+        
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(wiki_url, timeout=aiohttp.ClientTimeout(total=10)) as response:
+                    logger.info(f"Wikipedia API response status: {response.status}")
+                    
+                    if response.status == 200:
+                        data = await response.json()
+                        
+                        # 提取关键信息
+                        result = {
+                            "title": data.get("title", concept),
+                            "extract": data.get("extract", ""),
+                            "url": data.get("content_urls", {}).get("desktop", {}).get("page", ""),
+                            "thumbnail": data.get("thumbnail", {}).get("source", "") if "thumbnail" in data else "",
+                            "description": data.get("description", "")
+                        }
+                        
+                        return {
+                            "success": True,
+                            "data": result
+                        }
+                    elif response.status == 404:
+                        return {
+                            "success": False,
+                            "message": "未找到相关维基百科条目"
+                        }
+                    else:
+                        return {
+                            "success": False,
+                            "message": f"维基百科 API 返回错误: {response.status}"
+                        }
+            except aiohttp.ClientError as ce:
+                logger.error(f"aiohttp ClientError: {str(ce)}")
+                return {
+                    "success": False,
+                    "message": f"网络请求失败: {str(ce)}"
+                }
+                    
+    except Exception as e:
+        logger.error(f"Error fetching Wikipedia summary: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": str(e) if str(e) else "未知错误"
+        }
 
 
 if __name__ == "__main__":

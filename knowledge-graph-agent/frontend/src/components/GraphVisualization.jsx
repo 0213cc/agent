@@ -63,7 +63,7 @@ const getDomainColor = (domain, allDomains) => {
   return COLOR_PALETTE[index % COLOR_PALETTE.length];
 };
 
-function GraphVisualization({ data, onNodeClick, loading }) {
+function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
   const chartRef = useRef(null);
 
   const getOption = () => {
@@ -212,8 +212,22 @@ function GraphVisualization({ data, onNodeClick, loading }) {
     }
   };
 
+  const handleChartRightClick = (params) => {
+    // 阻止浏览器默认右键菜单
+    params.event?.event?.preventDefault();
+
+    if (params.dataType === 'node' && !loading) {
+      const nodeId = params.data.id;
+      if (onNodeRightClick) {
+        onNodeRightClick(nodeId);
+      }
+    }
+  };
+
   const onEvents = {
     click: handleChartClick
+  ,
+    contextmenu: handleChartRightClick
   };
 
   return (

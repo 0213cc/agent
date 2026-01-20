@@ -14,6 +14,10 @@ function App() {
   const [showExportMenu, setShowExportMenu] = useState(false);
   const [summary, setSummary] = useState(null);
   const [loadingSummary, setLoadingSummary] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const [wikiData, setWikiData] = useState(null);
+  const [loadingWiki, setLoadingWiki] = useState(false);
+
 
   const handleGenerate = async () => {
     if (!concept.trim()) {
@@ -110,6 +114,55 @@ function App() {
       setLoadingSummary(false);
     }
   };
+
+  // 获取维基百科信息
+  const fetchWikipedia = async (nodeName) => {
+    setLoadingWiki(true);
+    setWikiData(null);
+    
+    try {
+      const encodedName = encodeURIComponent(nodeName);
+      const response = await fetch(`https://zh.wikipedia.org/api/rest_v1/page/summary/${encodedName}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        setWikiData({
+          title: data.title,
+          extract: data.extract,
+          url: data.content_urls?.desktop?.page || '',
+          thumbnail: data.thumbnail?.source || '',
+          description: data.description || ''
+        });
+      } else {
+        setWikiData({
+          error: '未找到相关维基百科条目'
+        });
+      }
+    } catch (err) {
+      console.error('获取维基百科信息失败:', err);
+      setWikiData({
+        error: '获取维基百科信息失败'
+      });
+    } finally {
+      setLoadingWiki(false);
+    }
+  };
+
+  // 处理节点点击（显示维基百科）
+  const handleNodeInfo = (nodeId) => {
+    const node = graphData?.nodes?.find(n => n.id === nodeId);
+    if (node) {
+      setSelectedNode(node);
+      fetchWikipedia(node.label || node.id);
+    }
+  };
+
+  // 关闭节点详情面板
+  const closeNodePanel = () => {
+    setSelectedNode(null);
+    setWikiData(null);
+  };
+
 
   // 导出为 JSON
   const handleExportJSON = () => {
@@ -306,11 +359,64 @@ function App() {
           <GraphVisualization
             data={graphData}
             onNodeClick={handleExpand}
+            onNodeRightClick={handleNodeInfo}
             loading={loading}
           />
 
+          {/* 节点详情面板 - 维基百科 */}
+          {selectedNode && (
+            <div className="node-detail-panel">
+              <div className="node-detail-overlay" onClick={closeNodePanel}></div>
+              <div className="node-detail-content">
+                <button className="close-btn" onClick={closeNodePanel}>✕</button>
+                
+                <h3 className="node-detail-title">
+                  📖 {selectedNode.label || selectedNode.id}
+                </h3>
+                
+                <div className="node-detail-info">
+                  <span className="node-domain">{selectedNode.domain}</span>
+                  {selectedNode.definition && (
+                    <p className="node-definition">{selectedNode.definition}</p>
+                  )}
+                </div>
+                
+                {loadingWiki && (
+                  <div className="wiki-loading">
+                    <div className="wiki-spinner"></div>
+                    <span>正在加载维基百科信息...</span>
+                  </div>
+                )}
+                
+                {wikiData && !loadingWiki && (
+                  <div className="wiki-content">
+                    {wikiData.error ? (
+                      <p className="wiki-error">{wikiData.error}</p>
+                    ) : (
+                      <>
+                        {wikiData.thumbnail && (
+                          <img src={wikiData.thumbnail} alt={wikiData.title} className="wiki-thumbnail" />
+                        )}
+                        <h4 className="wiki-title">{wikiData.title}</h4>
+                        {wikiData.description && (
+                          <p className="wiki-description">{wikiData.description}</p>
+                        )}
+                        <p className="wiki-extract">{wikiData.extract}</p>
+                        {wikiData.url && (
+                          <a href={wikiData.url} target="_blank" rel="noopener noreferrer" className="wiki-link">
+                            在维基百科中查看完整内容 →
+                          </a>
+                        )}
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="instructions">
-            <p>💡 <strong>提示：</strong>点击节点可以进一步扩展该概念的关联</p>
+            <p>💡 <strong>提示：</strong>左键单击扩展节点 | 右键单击查看维基百科</p>
           </div>
         </div>
       )}
