@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import ReactECharts from 'echarts-for-react';
 import './GraphVisualization.css';
 
@@ -65,6 +65,8 @@ const getDomainColor = (domain, allDomains) => {
 
 function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
   const chartRef = useRef(null);
+  const lastClickTimeRef = useRef(0);
+  const clickTimeoutRef = useRef(null);
 
   const getOption = () => {
     if (!data || !data.nodes || !data.edges) {
@@ -203,14 +205,14 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
     };
   };
 
-  const handleChartClick = (params) => {
+  const handleChartClick = useCallback((params) => {
     if (params.dataType === 'node' && !loading) {
       const nodeId = params.data.id;
       if (onNodeClick) {
         onNodeClick(nodeId);
       }
     }
-  };
+  }, [loading, onNodeClick]);
 
   const handleChartRightClick = (params) => {
     // 阻止浏览器默认右键菜单
@@ -229,6 +231,15 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
   ,
     contextmenu: handleChartRightClick
   };
+
+  // 清理定时器
+  useEffect(() => {
+    return () => {
+      if (clickTimeoutRef.current) {
+        clearTimeout(clickTimeoutRef.current);
+      }
+    };
+  }, []);
 
   return (
     <div className="graph-visualization">
