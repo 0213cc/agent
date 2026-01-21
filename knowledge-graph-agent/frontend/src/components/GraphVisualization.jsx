@@ -466,6 +466,25 @@ function GraphVisualization({ data, onNodeClick, onNodeRightClick, loading }) {
         const amb = new THREE.AmbientLight(0xffffff, 0.6);
         scene.add(amb);
 
+        // ensure the graph is centered in the view: position camera and controls to look at origin
+        try {
+          const camera = Graph.camera();
+          const controls = Graph.controls();
+          // choose a sensible distance based on node count (fallback to 150)
+          const nodeCount = (data && data.nodes && data.nodes.length) || 0;
+          const distance = Math.max(150, Math.min(800, 150 + nodeCount * 4));
+          if (camera) camera.position.set(0, 140, distance);
+          if (controls) {
+            // nudge the view target further downward so the graph appears higher in the viewport
+            controls.target.set(0, -80, 0);
+            // ensure controls update
+            if (typeof controls.update === "function") controls.update();
+          }
+        } catch (e) {
+          // ignore camera/controls adjustments if API not present
+          console.warn("Could not center camera", e);
+        }
+
         fgInstanceRef.current = Graph;
       } catch (err) {
         console.error("Failed to load 3D graph libs", err);
