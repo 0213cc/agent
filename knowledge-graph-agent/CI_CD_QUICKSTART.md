@@ -23,14 +23,14 @@ git push -u origin main
 
 ### 步骤 2: 配置 GitHub Secrets
 
-1. 进入你的 GitHub 仓库
+1. 进入项目的 GitHub 仓库
 2. 点击 `Settings` → `Secrets and variables` → `Actions`
 3. 点击 `New repository secret`
 4. 添加以下 Secret：
 
 | Name | Value | 说明 |
 |------|-------|------|
-| `OPENAI_API_KEY` | 你的 OpenAI API Key | 必需，用于 LLM 功能 |
+| `OPENAI_API_KEY` | 项目的 OpenAI API Key | 必需，用于 LLM 功能 |
 
 ### 步骤 3: 启用 GitHub Actions
 
@@ -166,5 +166,5 @@ gh run view --log
 
 ---
 
-**提示**: 将所有 `YOUR_USERNAME` 和 `YOUR_REPO` 替换为你的实际 GitHub 用户名和仓库名。
+**提示**: 将文档中所有 `YOUR_USERNAME` 和 `YOUR_REPO` 替换为项目的实际 GitHub 用户名和仓库名。
 

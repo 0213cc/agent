@@ -267,10 +267,10 @@ docker pull ghcr.io/username/repo-backend:sha-abc1234
 
 ### 替换占位符
 
-在使用前，请将以下占位符替换为实际值：
+在使用前，请将以下占位符替换为具体值：
 
-- `YOUR_USERNAME` → 你的 GitHub 用户名
-- `YOUR_REPO` → 你的仓库名
+- `YOUR_USERNAME` → 项目的 GitHub 用户名
+- `YOUR_REPO` → 项目的仓库名
 - `/app/knowledge-graph-agent` → 实际部署路径
 
 ### 测试建议

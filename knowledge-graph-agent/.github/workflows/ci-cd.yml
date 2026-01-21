@@ -252,8 +252,7 @@ jobs:
       - name: Deploy to development server
         run: |
           echo "Deploying to development environment..."
-          # 这里添加你的部署脚本
-          # 例如：使用 SSH 连接到服务器并拉取最新镜像
+          # 使用 SSH 连接到服务器并拉取最新镜像
           # ssh user@dev-server "cd /app && docker-compose pull && docker-compose up -d"
 
   # 部署到生产环境
@@ -273,7 +272,6 @@ jobs:
       - name: Deploy to production server
         run: |
           echo "Deploying to production environment..."
-          # 这里添加你的生产部署脚本
           # 建议使用 Kubernetes、Docker Swarm 或其他编排工具
 
   # 通知

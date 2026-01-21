@@ -1,6 +1,6 @@
 # GitHub Actions 状态徽章
 
-将以下徽章添加到你的 README.md 文件顶部：
+将以下徽章添加到项目的 README.md 文件顶部：
 
 ## 徽章代码
 
@@ -55,8 +55,8 @@
 
 ## 使用说明
 
-1. 将 `YOUR_USERNAME` 替换为你的 GitHub 用户名
-2. 将 `YOUR_REPO` 替换为你的仓库名
+1. 将 `YOUR_USERNAME` 替换为项目的 GitHub 用户名
+2. 将 `YOUR_REPO` 替换为项目的仓库名
 3. 复制到 README.md 文件中
 
 ## 徽章样式
