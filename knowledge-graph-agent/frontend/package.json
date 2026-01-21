@@ -10,6 +10,7 @@
   "dependencies": {
     "3d-force-graph": "^1.79.0",
     "axios": "^1.6.5",
+    "d3-force": "^3.0.0",
     "echarts": "^5.4.3",
     "echarts-for-react": "^3.0.2",
     "html2canvas": "^1.4.1",
