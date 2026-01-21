@@ -691,6 +691,111 @@ async def get_wikipedia_summary(concept: str):
         }
 
 
+
+@app.post("/api/graph/rate")
+async def rate_graph(request: dict):
+    """
+    为图谱评分
+    
+    - **concept**: 概念名称
+    - **rating**: 评分（1-5）
+    """
+    try:
+        concept = request.get("concept")
+        rating = request.get("rating")
+        
+        if not concept or not rating:
+            return {
+                "success": False,
+                "message": "缺少必要参数"
+            }
+        
+        if not (1 <= rating <= 5):
+            return {
+                "success": False,
+                "message": "评分必须在 1-5 之间"
+            }
+        
+        import json
+        
+        # 获取当前评分数据
+        rating_key = f"rating:{concept}"
+        rating_data = await redis_client.get(rating_key)
+        
+        if rating_data:
+            data = json.loads(rating_data)
+            total_rating = data["total_rating"] + rating
+            vote_count = data["vote_count"] + 1
+        else:
+            total_rating = rating
+            vote_count = 1
+        
+        avg_rating = round(total_rating / vote_count, 1)
+        
+        # 保存评分数据
+        new_data = {
+            "total_rating": total_rating,
+            "vote_count": vote_count,
+            "avg_rating": avg_rating
+        }
+        
+        await redis_client.set(rating_key, json.dumps(new_data))
+        
+        logger.info(f"⭐ Graph rated: {concept} - {rating} stars (avg: {avg_rating}, votes: {vote_count})")
+        
+        return {
+            "success": True,
+            "data": {
+                "avg_rating": avg_rating,
+                "vote_count": vote_count
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error rating graph: {str(e)}")
+        logger.error(traceback.format_exc())
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+
+@app.get("/api/graph/rating/{concept}")
+async def get_graph_rating(concept: str):
+    """
+    获取图谱评分
+    
+    - **concept**: 概念名称
+    """
+    try:
+        import json
+        
+        rating_key = f"rating:{concept}"
+        rating_data = await redis_client.get(rating_key)
+        
+        if rating_data:
+            data = json.loads(rating_data)
+            return {
+                "success": True,
+                "data": data
+            }
+        else:
+            return {
+                "success": True,
+                "data": {
+                    "avg_rating": 0,
+                    "vote_count": 0
+                }
+            }
+        
+    except Exception as e:
+        logger.error(f"Error getting graph rating: {str(e)}")
+        return {
+            "success": False,
+            "message": str(e)
+        }
+
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)

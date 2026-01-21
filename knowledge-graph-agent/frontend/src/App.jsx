@@ -20,6 +20,10 @@ function App() {
   const [literatureData, setLiteratureData] = useState(null);
   const [loadingLiterature, setLoadingLiterature] = useState(false);
   const lastNodeInfoTimeRef = useRef(0);
+  const [graphRating, setGraphRating] = useState({ avg_rating: 0, vote_count: 0 });
+  const [userRating, setUserRating] = useState(0);
+  const [hoveredStar, setHoveredStar] = useState(0);
+  const [currentConcept, setCurrentConcept] = useState('');
 
 
   const handleGenerate = async () => {
@@ -44,9 +48,13 @@ function App() {
       if (response.data.success) {
         setGraphData(response.data.data.graph);
         setGraphId(response.data.data.graph_id);
+        setCurrentConcept(concept.trim());
         
         // 自动生成摘要
         generateSummary(response.data.data.graph, concept.trim());
+        
+        // 获取图谱评分
+        fetchGraphRating(concept.trim());
       } else {
         setError('生成失败：' + (response.data.message || '未知错误'));
       }
@@ -174,6 +182,51 @@ function App() {
       });
     } finally {
       setLoadingLiterature(false);
+    }
+  };
+
+  // 获取图谱评分
+  const fetchGraphRating = async (concept) => {
+    try {
+      const response = await fetch(`http://localhost:8000/api/graph/rating/${encodeURIComponent(concept)}`);
+      const result = await response.json();
+      
+      if (result.success) {
+        setGraphRating(result.data);
+      }
+    } catch (error) {
+      console.error('获取评分失败:', error);
+    }
+  };
+
+  // 提交评分
+  const submitRating = async (rating) => {
+    if (!currentConcept) return;
+    
+    try {
+      const response = await fetch('http://localhost:8000/api/graph/rate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          concept: currentConcept,
+          rating: rating
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        setGraphRating(result.data);
+        setUserRating(rating);
+        alert(`感谢您的评分！当前平均评分：${result.data.avg_rating} ⭐`);
+      } else {
+        alert('评分失败：' + result.message);
+      }
+    } catch (error) {
+      console.error('提交评分失败:', error);
+      alert('提交评分失败，请稍后重试');
     }
   };
 
@@ -402,6 +455,38 @@ function App() {
             onNodeRightClick={handleNodeInfo}
             loading={loading}
           />
+
+          {/* 评分系统 */}
+          <div className="rating-section">
+            <div className="rating-header">
+              <h3>为这个知识图谱评分</h3>
+              {graphRating.vote_count > 0 && (
+                <div className="current-rating">
+                  <span className="rating-value">{graphRating.avg_rating}</span>
+                  <span className="rating-stars">{'⭐'.repeat(Math.round(graphRating.avg_rating))}</span>
+                  <span className="rating-count">({graphRating.vote_count} 人评分)</span>
+                </div>
+              )}
+            </div>
+            
+            <div className="star-rating">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <span
+                  key={star}
+                  className={`star ${star <= (hoveredStar || userRating) ? 'active' : ''}`}
+                  onMouseEnter={() => setHoveredStar(star)}
+                  onMouseLeave={() => setHoveredStar(0)}
+                  onClick={() => submitRating(star)}
+                >
+                  ⭐
+                </span>
+              ))}
+            </div>
+            
+            {userRating > 0 && (
+              <p className="rating-thanks">感谢您的评分！您给了 {userRating} 星</p>
+            )}
+          </div>
 
           {/* 节点详情面板 - 维基百科 */}
           {selectedNode && (
