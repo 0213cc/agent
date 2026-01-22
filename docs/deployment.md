@@ -702,29 +702,7 @@ docker rmi knowledge-graph-agent_frontend
 
 # 删除网络
 docker network rm knowledge-graph-agent_kg-network
-```
 
-## 11. 性能基准
 
-### 11.1 预期性能
 
-- **图谱生成**: 30-60 秒（取决于 LLM 响应速度）
-- **节点扩展**: 15-30 秒
-- **图谱查询**: <100ms（有缓存）
-- **并发支持**: 10+ 并发请求
 
-### 11.2 性能测试
-
-```bash
-# 使用Apache Bench测试
-ab -n 100 -c 10 http://localhost:8000/health
-
-# 使用wrk测试
-wrk -t4 -c100 -d30s http://localhost:8000/health
-```
-
-## 12. 联系与支持
-
-- **文档**: 查看 `docs/` 目录
-- **问题反馈**: 提交 GitHub Issue
-- **技术支持**: [Your Email]
